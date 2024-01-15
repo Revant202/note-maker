@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notes App</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f4f4f4;
+        color: #333;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      #notesContainer {
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        width: 100%;
+        max-width: 800px;
+        box-sizing: border-box;
+      }
+      #toast {
+        visibility: hidden;
+        min-width: 250px;
+        margin: auto;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 5px;
+        padding: 16px;
+        position: fixed;
+        z-index: 1;
+        left: 50%;
+        bottom: 30px;
+        transform: translateX(-50%);
+      }
+      h1 {
+        text-align: center;
+        color: #333;
+      }
+
+      label {
+        display: block;
+        margin-top: 10px;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        padding: 8px;
+        margin-top: 5px;
+        margin-bottom: 15px;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 16px;
+      }
+
+      button {
+        background-color: #4caf50;
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+
+      button:hover {
+        background-color: #45a049;
+      }
+
+      .note {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        margin-top: 20px;
+        margin-bottom: 20px;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+      }
+      .buttons {
+        display: flex;
+        gap: 10px;
+      }
+
+      .buttons img {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="notesContainer">
+      <h1>Notes App</h1>
+      <label for="noteTitle">Note Title:</label>
+      <input type="text" id="noteTitle" placeholder="Enter title..." />
+      <br />
+      <label for="noteContent">Note Content:</label>
+      <textarea
+        id="noteContent"
+        rows="4"
+        placeholder="Enter your note..."
+      ></textarea>
+      <br />
+      <button id="saveButton" onclick="saveNote()">Save Note</button>
+
+      <div id="savedNotes"></div>
+    </div>
+    <div id="toast"></div>
+    <script>
+      function showToast(message) {
+        var toast = document.getElementById("toast");
+        toast.innerText = message;
+        toast.style.visibility = "visible";
+        setTimeout(function () {
+          toast.style.visibility = "hidden";
+        }, 3000); // Hide after 3 seconds
+      }
+
+      function saveNote() {
+        var title = document.getElementById("noteTitle").value;
+        var content = document.getElementById("noteContent").value;
+
+        if (content.trim() === "") {
+          alert("Trying to save blank note? Doesn't make sense");
+          return;
+        }
+
+        var note = {
+          title: title,
+          content: content,
+        };
+
+        // Save note to local storage
+        var savedNotes = JSON.parse(localStorage.getItem("savedNotes")) || [];
+        savedNotes.push(note);
+        localStorage.setItem("savedNotes", JSON.stringify(savedNotes));
+
+        // Clear input fields
+        document.getElementById("noteTitle").value = "";
+        document.getElementById("noteContent").value = "";
+
+        // Refresh the list of saved notes
+        displaySavedNotes();
+      }
+
+      function copyNote(title, content) {
+        navigator.clipboard
+          .writeText(content)
+          .then(() => showToast(`Note '${title}' copied to clipboard!`))
+          .catch((err) =>
+            console.error("Unable to copy note to clipboard", err)
+          );
+      }
+
+      function deleteNote(index) {
+        var savedNotes = JSON.parse(localStorage.getItem("savedNotes")) || [];
+        savedNotes.splice(index, 1);
+        localStorage.setItem("savedNotes", JSON.stringify(savedNotes));
+
+        // Refresh the list of saved notes
+        displaySavedNotes();
+      }
+
+      function editNote(index) {
+        var savedNotes = JSON.parse(localStorage.getItem("savedNotes")) || [];
+        var note = savedNotes[index];
+
+        // Populate the form fields with existing note content
+        document.getElementById("noteTitle").value = note.title;
+        document.getElementById("noteContent").value = note.content;
+
+        // Hide the "Save Note" button during editing
+        document.getElementById("saveButton").style.display = "none";
+
+        // Create a new "Update Note" button for saving changes
+        var updateButton = document.createElement("button");
+        updateButton.textContent = "Update Note";
+        updateButton.onclick = function () {
+          // Find the index of the edited note
+          var noteIndex = savedNotes.findIndex((n) => n === note);
+
+          // Update the content of the existing note
+          savedNotes[noteIndex].title =
+            document.getElementById("noteTitle").value;
+          savedNotes[noteIndex].content =
+            document.getElementById("noteContent").value;
+
+          // Save the updated notes back to local storage
+          localStorage.setItem("savedNotes", JSON.stringify(savedNotes));
+
+          // Clear input fields and show the "Save Note" button again
+          document.getElementById("noteTitle").value = "";
+          document.getElementById("noteContent").value = "";
+          document.getElementById("saveButton").style.display = "block";
+
+          // Refresh the list of saved notes
+          displaySavedNotes();
+        };
+
+        // Replace the existing button with the "Update Note" button
+        document.getElementById("saveButton").replaceWith(updateButton);
+      }
+
+      function displaySavedNotes() {
+        var savedNotes = JSON.parse(localStorage.getItem("savedNotes")) || [];
+        var savedNotesContainer = document.getElementById("savedNotes");
+
+        // Clear previous notes
+        savedNotesContainer.innerHTML = "";
+
+        // Display each saved note with buttons for copy, edit, and delete
+        savedNotes.forEach(function (note, index) {
+          var noteDiv = createNoteElement(note, index);
+          savedNotesContainer.appendChild(noteDiv);
+        });
+      }
+
+      function createButton(iconPath, onClick) {
+        var button = document.createElement("span");
+        button.innerHTML = ` <img  alt="some file"  height='24' width='24' style="color:green;" src=${iconPath} />`;
+        button.onclick = onClick;
+        return button;
+      }
+
+      function createNoteElement(note, index) {
+        var noteDiv = document.createElement("div");
+        noteDiv.classList.add("note");
+
+        // Convert newline characters to <br> for proper rendering
+        var formattedContent = note.content.replace(/\n/g, "<br>");
+
+        var noteContent = `<span><strong>${note.title}</strong><div>${formattedContent}</div></span>`;
+        noteDiv.innerHTML = noteContent;
+        var copyButton = createButton("./copy.png", function () {
+          copyNote(note.title, note.content);
+        });
+
+        var editButton = createButton("./edit.png", function () {
+          editNote(index);
+        });
+
+        var deleteButton = createButton("./delete.png", function () {
+          deleteNote(index);
+        });
+
+        var buttons = document.createElement("span");
+        buttons.classList.add("buttons");
+        buttons.appendChild(deleteButton);
+        buttons.appendChild(editButton);
+        buttons.appendChild(copyButton);
+        noteDiv.appendChild(buttons);
+
+        return noteDiv;
+      }
+
+      // Initial display of saved notes
+      displaySavedNotes();
+    </script>
+  </body>
+</html>
